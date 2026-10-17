@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>نظام الحضور والانصراف</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#eef2f3;--card:#fff;--ink:#12303a;--mute:#5d747c;--line:#d6e0e3;--in:#0f8b6d;--out:#d9552b;--ring:#cfe0e4}
+@media (prefers-color-scheme:dark){:root{color-scheme:dark;--bg:#0d1a1f;--card:#14262d;--ink:#e6f0f2;--mute:#8fa8b0;--line:#25404a;--in:#33c29b;--out:#ff7d52;--ring:#25404a}}
+*{box-sizing:border-box}html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:Cairo,Tahoma,sans-serif;max-width:520px;margin:0 auto;padding:max(18px,env(safe-area-inset-top)) 16px 40px}
+h1{font-size:15px;font-weight:600;color:var(--mute);margin:0}
+.top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.card{background:var(--card);border-radius:16px;padding:14px;margin-top:14px;border:1px solid var(--line)}
+.card h2{font-size:15px;margin:0 0 10px;font-weight:800}
+label{font-size:13px;color:var(--mute);display:block;margin:10px 0 4px}
+input,select{width:100%;font-family:inherit;font-size:16px;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+button.sec,button.main{font-family:inherit;font-size:14px;font-weight:600;padding:10px 14px;border-radius:10px;cursor:pointer}
+button.sec{border:1px solid var(--line);background:transparent;color:var(--ink)}
+button.main{border:0;background:var(--in);color:#fff;width:100%;margin-top:14px;font-size:16px}
+button:disabled{opacity:.6}
+.tabs{display:flex;gap:6px;margin-top:14px}.tabs .sec{flex:1}.tabs .on{background:var(--ink);color:var(--bg)}
+.clock{font-size:50px;font-weight:800;text-align:center;margin:14px 0 0;direction:ltr;line-height:1.1}
+.date,.small{color:var(--mute);font-size:13px}.date{text-align:center}
+.state{text-align:center;font-weight:600;min-height:28px;margin-top:4px}.state b{color:var(--in)}
+.stage{display:flex;justify-content:center;margin:12px 0 4px}
+.btn{width:190px;height:190px;border-radius:50%;border:0;background:conic-gradient(var(--c) calc(var(--p,0)*1%),var(--ring) 0);padding:10px;cursor:pointer;touch-action:none;user-select:none;-webkit-user-select:none}
+.btn .in{width:100%;height:100%;border-radius:50%;background:var(--card);display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--c);font-weight:800;font-size:19px;font-family:inherit}
+.btn svg{width:74px;height:74px}.btn.i{--c:var(--in)}.btn.o{--c:var(--out)}.btn.d{--c:var(--mute)}.btn.busy{opacity:.6;pointer-events:none}
+.hint{text-align:center;color:var(--mute);font-size:13px;margin:4px 0 0}
+.msg{margin-top:12px;padding:10px 12px;border-radius:12px;font-size:14px;text-align:center;display:none}
+.msg.show{display:block}.msg.ok{background:color-mix(in srgb,var(--in) 16%,transparent);color:var(--in)}.msg.bad{background:color-mix(in srgb,var(--out) 16%,transparent);color:var(--out)}
+.li{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-top:1px solid var(--line);font-size:14px}
+.i-t{color:var(--in);font-weight:800}.o-t{color:var(--out);font-weight:800}
+a{color:var(--mute);font-size:12px}
+.day{font-weight:800;font-size:13px;color:var(--mute);margin:12px 0 2px;display:flex;justify-content:space-between}
+summary{cursor:pointer;display:flex;justify-content:space-between;align-items:center;list-style:none;font-weight:600}
+summary::-webkit-details-marker{display:none}
+.pill{font-size:12px;padding:2px 10px;border-radius:99px;font-weight:600}
+.pill.p{background:color-mix(in srgb,var(--in) 18%,transparent);color:var(--in)}.pill.a{background:color-mix(in srgb,var(--out) 18%,transparent);color:var(--out)}.pill.d{background:var(--line);color:var(--mute)}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div id="nocfg" class="card" hidden><h2>الإعداد ناقص</h2><p class="small">افتح الملف وحط رابط الـ Web App في SCRIPT_URL أول السكريبت.</p></div>
+
+<section id="auth" hidden>
+ <div class="top"><h1>نظام الحضور والانصراف</h1></div>
+ <div class="card">
+  <h2 id="authTitle">تسجيل الدخول</h2>
+  <div id="nameWrap" hidden><label for="fullname">اسمك بالكامل</label><input id="fullname" autocomplete="name"></div>
+  <label for="user">اسم المستخدم</label><input id="user" autocapitalize="none" autocomplete="username" dir="ltr">
+  <label for="pass">كلمة المرور</label><input id="pass" type="password" autocomplete="current-password" dir="ltr">
+  <button class="main" id="authBtn">دخول</button>
+  <div class="msg" id="authMsg"></div>
+ </div>
+</section>
+
+<section id="app" hidden>
+ <div class="top"><h1 id="who"></h1><button class="sec" id="out">خروج</button></div>
+
+ <div id="emp" hidden>
+  <div class="clock" id="clock">--:--:--</div><div class="date" id="date"></div><div class="state" id="state"></div>
+  <div class="stage"><button class="btn i" id="punch" aria-label="بصمة"><span class="in">
+   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 11v3a6 6 0 0 1-1 3.4"/><path d="M8 11a4 4 0 0 1 8 0v1.5c0 2 .3 3.8 1 5.3"/><path d="M5 11a7 7 0 0 1 14 0v1c0 1.6.2 3 .6 4.2"/><path d="M8.5 20c.7-1.2 1.2-2.6 1.4-4.2"/><path d="M12 3a9 9 0 0 1 9 9"/><path d="M3 12a9 9 0 0 1 3-6.7"/></svg>
+   <span id="lbl">بصمة حضور</span></span></button></div>
+  <p class="hint">اضغط مطوّلاً ثانية واحدة لتسجيل البصمة</p>
+  <div class="msg" id="msg"></div>
+  <div class="card"><h2>بصمات هذا الشهر</h2><p class="small" style="margin-top:-4px">الشهور السابقة بتتحفظ في الأرشيف عند المدير.</p><div id="mine"><p class="small">جاري التحميل...</p></div></div>
+ </div>
+
+ <div id="mgr" hidden>
+  <div class="tabs"><button class="sec on" data-t="t1">الحضور</button><button class="sec" data-t="t4">الشهري</button><button class="sec" data-t="t2">الموظفين</button><button class="sec" data-t="t3">الموقع</button></div>
+  <div id="t1"><div class="card"><label for="dayIn" style="margin-top:0">اليوم</label><input type="date" id="dayIn"><div id="board" style="margin-top:6px"></div></div></div>
+  <div id="t4" hidden><div class="card"><label for="monIn" style="margin-top:0">الشهر</label><input type="month" id="monIn"><div id="monBoard" style="margin-top:6px"></div></div></div>
+  <div id="t2" hidden>
+   <div class="card"><h2>إضافة موظف</h2>
+    <label for="nn">الاسم</label><input id="nn">
+    <label for="nu">اسم المستخدم (حروف إنجليزي وأرقام)</label><input id="nu" dir="ltr" autocapitalize="none">
+    <label for="np">كلمة المرور (6 أحرف على الأقل)</label><input id="np" dir="ltr">
+    <label for="nh">ساعات الشغل المطلوبة في اليوم</label><input id="nh" type="number" min="0" max="24" step="0.5" value="8" dir="ltr">
+    <button class="main" id="addEmp">إضافة</button><div class="msg" id="mm"></div></div>
+   <div class="card"><h2>الموظفين</h2><div id="staff"></div></div>
+  </div>
+  <div id="t3" hidden><div class="card"><h2>موقع الشغل</h2>
+   <label for="rad" style="margin-top:0">النطاق المسموح</label>
+   <select id="rad"><option value="10">10 أمتار</option><option value="20">20 متر</option><option value="30">30 متر</option><option value="50">50 متر</option><option value="100">100 متر</option><option value="200">200 متر</option><option value="500">500 متر</option><option value="0">من غير تقييد</option></select>
+   <button class="main" id="setLoc">حدد موقع الشغل من مكاني الحالي</button>
+   <label for="coord">أو اكتب إحداثيات الشغل يدوي</label>
+   <input id="coord" dir="ltr" inputmode="text" placeholder="30.044420, 31.235712">
+   <button class="sec" id="setCoord" style="width:100%;margin-top:8px">حفظ الإحداثيات</button>
+   <p class="small">من خرائط جوجل: اضغط مطوّلاً على مكان الشغل، هتظهر الإحداثيات فوق، اضغط عليها عشان تتنسخ والصقها هنا.</p>
+   <p class="small" id="locInfo"></p><div class="msg" id="lm"></div></div></div>
+ </div>
+</section>
+
+<script>
+// ====== حط رابط الـ Web App بتاع Google Apps Script هنا ======
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyRug4_wNOwmhyXsBL-T_930jGd4Sj5T-R4O-5QXG-A1XE2AzVn4nvuBR8WjHU2dnqViA/exec";
+// =============================================================
+const $=id=>document.getElementById(id);
+if(!SCRIPT_URL){$('nocfg').hidden=false;throw new Error('no url')}
+const nf=new Intl.NumberFormat('ar-EG');
+const okUser=u=>/^[a-z0-9._-]{3,30}$/.test(u.trim().toLowerCase());
+const fT=t=>new Date(t).toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'});
+const fD=t=>new Date(t).toLocaleDateString('ar-EG',{weekday:'long',day:'numeric',month:'long'});
+const fH=ms=>{const m=Math.floor(ms/6e4);return nf.format(Math.floor(m/60))+':'+String(m%60).padStart(2,'0').replace(/\d/g,d=>'٠١٢٣٤٥٦٧٨٩'[d])};
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const ymd=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+function say(id,t,c){const m=$(id);m.textContent=t;m.className='msg show '+c;clearTimeout(m._t);m._t=setTimeout(()=>m.className='msg',6000)}
+function hours(ps,openToNow){let t=0,o=null;ps.forEach(p=>{if(p.type==='in')o=p.ts;else if(o!=null){t+=p.ts-o;o=null}});if(o!=null&&openToNow)t+=Date.now()-o;return t}
+
+let cred=null,me=null,work=null,mode='login',poll=null,mine=[],staff=[],dayPunches=[];
+async function api(action,extra={}){
+ let r;
+ try{r=await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({action,...(cred||{}),...extra})})}
+ catch(e){throw new Error('مفيش اتصال بالإنترنت.')}
+ let j;try{j=await r.json()}catch(e){throw new Error('الرابط غير صحيح أو الـ Web App مش منشور للجميع.')}
+ if(!j.ok)throw new Error(j.error);return j;
+}
+
+// ---------- Auth ----------
+async function showAuth(){
+ clearInterval(poll);$('app').hidden=true;$('auth').hidden=false;
+ try{const s=await api('status');mode=s.setup?'login':'setup'}catch(e){mode='login';say('authMsg',e.message,'bad')}
+ $('authTitle').textContent=mode==='login'?'تسجيل الدخول':'إنشاء حساب المدير (أول مرة)';
+ $('nameWrap').hidden=mode==='login';$('authBtn').textContent=mode==='login'?'دخول':'إنشاء الحساب';
+}
+$('authBtn').onclick=async()=>{
+ const u=$('user').value.trim().toLowerCase(),p=$('pass').value;
+ if(!okUser(u))return say('authMsg','اسم المستخدم: حروف إنجليزي وأرقام فقط (3 أحرف على الأقل).','bad');
+ $('authBtn').disabled=true;
+ try{
+  if(mode==='setup')await api('setup',{username:u,password:p,name:$('fullname').value});
+  cred={u,p};const r=await api('login');
+  localStorage.setItem('att_cred',JSON.stringify(cred));boot(r);
+ }catch(e){cred=null;say('authMsg',e.message,'bad')}
+ finally{$('authBtn').disabled=false}
+};
+$('out').onclick=()=>{localStorage.removeItem('att_cred');cred=null;me=null;showAuth()};
+(async()=>{
+ try{const c=localStorage.getItem('att_cred');if(c){cred=JSON.parse(c);boot(await api('login'));return}}catch(e){cred=null}
+ showAuth();
+})();
+function boot(r){
+ me=r.user;work=r.work;
+ $('auth').hidden=true;$('app').hidden=false;
+ $('who').textContent='أهلاً '+me.name+(me.role==='manager'?' (مدير)':'');
+ $('emp').hidden=me.role==='manager';$('mgr').hidden=me.role!=='manager';
+ clearInterval(poll);
+ if(me.role==='manager'){$('dayIn').value=ymd(new Date());$('monIn').value=ymd(new Date()).slice(0,7);loadBoard();poll=setInterval(()=>{const a=document.activeElement;if(!(a&&$('board').contains(a)&&/INPUT|SELECT/.test(a.tagName)))loadBoard()},30000)}
+ else{loadMine();poll=setInterval(loadMine,60000)}
+}
+
+// ---------- Employee ----------
+async function loadMine(){try{const r=await api('mine');mine=r.punches;me.hours=r.hours;renderEmp()}catch(e){$('mine').innerHTML='<p class="small">'+esc(e.message)+'</p>'}}
+const todayP=()=>mine.filter(p=>new Date(p.ts).toDateString()===new Date().toDateString());
+const nextType=()=>todayP().some(p=>p.type==='in')?'out':'in';
+const doneToday=()=>{const t=todayP();return t.some(p=>p.type==='in')&&t.some(p=>p.type==='out')};
+const manual=p=>p.dist==='يدوي'||p.lat==='';
+const mapLink=p=>manual(p)?'':'<a target="_blank" rel="noopener" href="https://maps.google.com/?q='+p.lat+','+p.lng+'">الخريطة</a>';
+const row=p=>'<div class="li"><div><span class="'+(p.type==='in'?'i-t':'o-t')+'">'+(p.type==='in'?'حضور':'انصراف')+'</span> <span class="small">'+fT(p.ts)+(manual(p)?' (يدوي)':'')+'</span></div>'+mapLink(p)+'</div>';
+function renderEmp(){
+ const t=nextType(),l=mine[mine.length-1];
+ const dn=doneToday();
+ $('punch').className=dn?'btn d busy':'btn '+(t==='in'?'i':'o');
+ $('lbl').textContent=dn?'تم تسجيل اليوم ✓':t==='in'?'بصمة حضور':'بصمة انصراف';
+ $('state').innerHTML=dn?'سجلت الحضور والانصراف النهارده. للتعديل كلم المدير.':l&&l.type==='in'&&todayP().length?'حاضر من <b>'+fT(l.ts)+'</b>':'لسه ماسجلتش حضور النهارده';
+ const days={};mine.forEach(p=>{(days[new Date(p.ts).toDateString()]??=[]).push(p)});
+ const keys=Object.keys(days).reverse();
+ $('mine').innerHTML=keys.length?keys.map(k=>{const ps=days[k];return '<div class="day"><span>'+fD(ps[0].ts)+'</span><span>'+fH(hours(ps,k===new Date().toDateString()))+(me.hours?' / '+fH(me.hours*36e5):'')+' ساعة '+verdict(ps,k===new Date().toDateString(),me.hours)+'</span></div>'+[...ps].reverse().map(row).join('')}).join(''):'<p class="small">مفيش بصمات لسه.</p>';
+}
+const getPos=()=>new Promise((ok,no)=>navigator.geolocation?navigator.geolocation.getCurrentPosition(ok,no,{enableHighAccuracy:true,timeout:15000,maximumAge:0}):no({code:0}));
+const posErr=e=>e.code===1?'لازم تسمح للمتصفح بالوصول للموقع.':'مقدرتش أحدد موقعك. اتأكد إن الـ GPS شغال.';
+async function doPunch(){
+ if(doneToday())return;
+ const b=$('punch');b.classList.add('busy');
+ try{
+  let p;try{p=await getPos()}catch(e){return say('msg',posErr(e),'bad')}
+  const r=await api('punch',{lat:p.coords.latitude,lng:p.coords.longitude});
+  say('msg',r.type==='in'?'تم تسجيل الحضور ✓':'تم تسجيل الانصراف ✓','ok');await loadMine();
+ }catch(e){say('msg',e.message,'bad')}
+ finally{b.classList.remove('busy');b.style.setProperty('--p',0);renderEmp()}
+}
+(()=>{const b=$('punch');let raf,t0,done=false;
+ const step=()=>{const p=Math.min(100,(performance.now()-t0)/10);b.style.setProperty('--p',p);if(p>=100){done=true;navigator.vibrate&&navigator.vibrate(40);doPunch()}else raf=requestAnimationFrame(step)};
+ b.addEventListener('pointerdown',e=>{if(b.classList.contains('busy'))return;e.preventDefault();done=false;t0=performance.now();raf=requestAnimationFrame(step)});
+ ['pointerup','pointerleave','pointercancel'].forEach(n=>b.addEventListener(n,()=>{cancelAnimationFrame(raf);if(!done)b.style.setProperty('--p',0)}));
+ b.addEventListener('contextmenu',e=>e.preventDefault());
+})();
+setInterval(()=>{const d=new Date();$('clock').textContent=d.toLocaleTimeString('en-GB');$('date').textContent=d.toLocaleDateString('ar-EG',{weekday:'long',day:'numeric',month:'long',year:'numeric'})},1000);
+
+// ---------- Manager ----------
+document.querySelectorAll('.tabs .sec').forEach(b=>b.onclick=()=>{document.querySelectorAll('.tabs .sec').forEach(x=>x.classList.toggle('on',x===b));['t1','t4','t2','t3'].forEach(t=>$(t).hidden=t!==b.dataset.t);if(b.dataset.t==='t4')loadMonth()});
+$('dayIn').onchange=loadBoard;
+$('monIn').onchange=loadMonth;
+async function loadMonth(){
+ const m=$('monIn').value;if(!m)return;
+ $('monBoard').innerHTML='<p class="small">جاري التحميل...</p>';
+ try{
+  const r=await api('month',{month:m});
+  if(!r.staff.length)return $('monBoard').innerHTML='<p class="small">مفيش موظفين.</p>';
+  const now=ymd(new Date());
+  $('monBoard').innerHTML=r.staff.map(u=>{
+   const days={};r.punches.filter(p=>p.username===u.username).forEach(p=>{(days[ymd(new Date(p.ts))]??=[]).push(p)});
+   const keys=Object.keys(days).sort();let tot=0,short=0;
+   const rows=keys.map(k=>{const ps=days[k].sort((a,b)=>a.ts-b.ts),w=hours(ps,k===now);tot+=w;if(u.hours&&w<u.hours*36e5&&k!==now)short++;
+    const fi=ps.find(p=>p.type==='in'),lo=[...ps].reverse().find(p=>p.type==='out');
+    return '<div class="li"><span>'+fD(ps[0].ts)+'<br><span class="small">'+(fi?fT(fi.ts):'—')+' ← '+(lo?fT(lo.ts):'—')+'</span></span><span>'+fH(w)+' '+verdict(ps,k===now,u.hours)+'</span></div>'}).join('');
+   const req=u.hours?u.hours*36e5*keys.length:0;
+   return '<details class="li" style="display:block"><summary><span>'+esc(u.name)+'</span><span class="small">'+nf.format(keys.length)+' يوم | '+fH(tot)+' ساعة'+(short?' | <b style="color:var(--out)">'+nf.format(short)+' ناقص</b>':'')+'</span></summary><div class="small" style="margin:8px 0">إجمالي الساعات: '+fH(tot)+(req?' من '+fH(req)+' مطلوبة':'')+'</div>'+(rows||'<p class="small">مفيش بصمات في الشهر ده.</p>')+'</details>'}).join('');
+ }catch(e){$('monBoard').innerHTML='<p class="small">'+esc(e.message)+'</p>'}
+}
+async function loadBoard(){
+ if(!$('dayIn').value)return;
+ try{const r=await api('board',{date:$('dayIn').value});staff=r.staff;dayPunches=r.punches;work=r.work;renderBoard();renderStaff();renderLoc()}
+ catch(e){$('board').innerHTML='<p class="small">'+esc(e.message)+'</p>'}
+}
+const verdict=(ps,isToday,h)=>{if(!h)return '';const w=hours(ps,isToday),req=h*36e5,l=ps[ps.length-1];if(isToday&&l&&l.type==='in')return '<span class="pill d">فاضل '+fH(Math.max(0,req-w))+'</span>';return w>=req?'<span class="pill p">أكمل ✓</span>':'<span class="pill a">ناقص '+fH(req-w)+'</span>'};
+const mrow=p=>'<div class="li"><div><span class="'+(p.type==='in'?'i-t':'o-t')+'">'+(p.type==='in'?'حضور':'انصراف')+'</span> <span class="small">'+fT(p.ts)+(manual(p)?' (يدوي)':'')+'</span></div><span>'+mapLink(p)+' <button class="sec" data-ed="'+p.ts+'" data-un="'+esc(p.username)+'">تعديل</button> <button class="sec" data-rm="'+p.ts+'" data-un="'+esc(p.username)+'" style="color:var(--out)">مسح</button></span></div>';
+const addForm=un=>'<div class="li" style="gap:6px"><select data-at="'+esc(un)+'" style="width:auto"><option value="in">حضور</option><option value="out">انصراف</option></select><input type="time" data-tm="'+esc(un)+'" style="width:auto"><button class="sec" data-add="'+esc(un)+'">إضافة يدوي</button></div>';
+const norm=s=>s.replace(/[٠-٩]/g,d=>'٠١٢٣٤٥٦٧٨٩'.indexOf(d));
+async function act(action,extra){try{await api(action,{date:$('dayIn').value,...extra});await loadBoard()}catch(e){alert(e.message)}}
+function bindBoard(){
+ document.querySelectorAll('[data-ed]').forEach(b=>b.onclick=()=>{const t=prompt('الوقت الجديد (مثال 09:30 - نظام 24 ساعة):',new Date(+b.dataset.ed).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}));if(t)act('editPunch',{id:b.dataset.ed,username:b.dataset.un,time:norm(t.trim())})});
+ document.querySelectorAll('[data-rm]').forEach(b=>b.onclick=()=>{if(confirm('تمسح البصمة دي؟ الموظف هيقدر يبصم تاني.'))act('delPunch',{id:b.dataset.rm,username:b.dataset.un})});
+ document.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>{const u=b.dataset.add,tm=document.querySelector('[data-tm="'+u+'"]').value;if(!tm)return alert('اختار الوقت الأول.');act('addPunch',{username:u,type:document.querySelector('[data-at="'+u+'"]').value,time:tm})});
+}
+function renderBoard(){
+ const today=$('dayIn').value===ymd(new Date());
+ if(!staff.length)return $('board').innerHTML='<p class="small">لسه مفيش موظفين. ضيفهم من تبويب "الموظفين".</p>';
+ const open=[...document.querySelectorAll('#board details[open]')].map(d=>d.dataset.u);
+ $('board').innerHTML=staff.map(u=>{
+  const ps=dayPunches.filter(p=>p.username===u.username).sort((a,b)=>a.ts-b.ts),l=ps[ps.length-1];
+  const pill=!ps.length?'<span class="pill a">غايب</span>':l.type==='in'?'<span class="pill p">حاضر</span>':'<span class="pill d">انصرف</span>';
+  const fi=ps.find(p=>p.type==='in'),lo=[...ps].reverse().find(p=>p.type==='out');
+  return '<details class="li" data-u="'+esc(u.username)+'" style="display:block"'+(open.includes(u.username)?' open':'')+'><summary><span>'+esc(u.name)+'</span><span>'+verdict(ps,today,u.hours)+' '+pill+'</span></summary>'+
+   '<div class="small" style="margin:8px 0">'+(ps.length?'أول حضور: '+(fi?fT(fi.ts):'—')+' | آخر انصراف: '+(lo?fT(lo.ts):'—')+' | الساعات: '+fH(hours(ps,today))+(u.hours?' من '+fH(u.hours*36e5):''):'مفيش بصمات في اليوم ده')+'</div>'+ps.map(mrow).join('')+addForm(u.username)+'</details>'}).join('');bindBoard();
+}
+function renderStaff(){
+ $('staff').innerHTML=staff.length?staff.map(u=>'<div class="li"><span>'+esc(u.name)+' <span class="small" dir="ltr">'+esc(u.username)+'</span><br><span class="small">'+(u.hours?nf.format(u.hours)+' ساعة/يوم':'من غير ساعات محددة')+'</span></span><span><button class="sec" data-hr="'+esc(u.username)+'">ساعات</button> <button class="sec" data-rp="'+esc(u.username)+'">باسورد</button> <button class="sec" data-del="'+esc(u.username)+'" style="color:var(--out)">حذف</button></span></div>').join(''):'<p class="small">مفيش موظفين.</p>';
+ document.querySelectorAll('[data-hr]').forEach(b=>b.onclick=async()=>{const u=staff.find(x=>x.username===b.dataset.hr),v=prompt('عدد ساعات الشغل المطلوبة في اليوم (0 = من غير تحديد):',u?u.hours:8);if(v===null)return;try{await api('setHours',{username:b.dataset.hr,hours:+norm(v.trim())});loadBoard()}catch(e){say('mm',e.message,'bad')}});
+ document.querySelectorAll('[data-del]').forEach(b=>b.onclick=async()=>{if(!confirm('تحذف الموظف ده؟ مش هيقدر يدخل تاني.'))return;try{await api('delUser',{username:b.dataset.del});loadBoard()}catch(e){say('mm',e.message,'bad')}});
+ document.querySelectorAll('[data-rp]').forEach(b=>b.onclick=async()=>{const p=prompt('كلمة المرور الجديدة (6 أحرف على الأقل):');if(!p)return;try{await api('resetPass',{username:b.dataset.rp,password:p});say('mm','تم تغيير كلمة المرور ✓','ok')}catch(e){say('mm',e.message,'bad')}});
+}
+$('addEmp').onclick=async()=>{
+ const n=$('nn').value.trim(),u=$('nu').value.trim().toLowerCase(),p=$('np').value;
+ if(!n||!okUser(u)||p.length<6)return say('mm','اكتب الاسم واسم مستخدم إنجليزي وكلمة مرور 6 أحرف على الأقل.','bad');
+ $('addEmp').disabled=true;
+ try{await api('addUser',{name:n,username:u,password:p,hours:+$('nh').value||0});say('mm','تمت إضافة '+n+' ✓','ok');$('nn').value=$('nu').value=$('np').value='';loadBoard()}
+ catch(e){say('mm',e.message,'bad')}
+ finally{$('addEmp').disabled=false}
+};
+function renderLoc(){$('locInfo').innerHTML=work?'موقع الشغل محفوظ ✓ <span dir="ltr">'+work.lat.toFixed(6)+', '+work.lng.toFixed(6)+'</span> <a target="_blank" rel="noopener" href="https://maps.google.com/?q='+work.lat+','+work.lng+'">افتحه على الخريطة</a>':'لسه ماحددتش موقع الشغل.';if(work)$('rad').value=String(work.radius)}
+$('setLoc').onclick=async()=>{
+ try{let p;try{p=await getPos()}catch(e){return say('lm',posErr(e),'bad')}
+  const r=await api('setLoc',{lat:p.coords.latitude,lng:p.coords.longitude,radius:+$('rad').value});work=r.work;renderLoc();const ac=Math.round(p.coords.accuracy);say('lm',ac>50?'اتحفظ، لكن دقة الـ GPS ضعيفة (± '+nf.format(ac)+' متر). الأفضل تكتب الإحداثيات يدوي.':'تم حفظ موقع الشغل ✓ (دقة ± '+nf.format(ac)+' متر)',ac>50?'bad':'ok')}
+ catch(e){say('lm',e.message,'bad')}
+};
+function parseCoord(t){t=norm(t).replace(/٫/g,'.').replace(/،/g,',');const m=/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/.exec(t)||/(-?\d{1,3}\.\d+)\s*[, ]\s*(-?\d{1,3}\.\d+)/.exec(t);if(!m)return null;const a=+m[1],b=+m[2];return Math.abs(a)<=90&&Math.abs(b)<=180?{lat:a,lng:b}:null}
+$('setCoord').onclick=async()=>{const c=parseCoord($('coord').value);if(!c)return say('lm','مقدرتش أقرأ الإحداثيات. اكتبها كده: 30.044420, 31.235712','bad');try{const r=await api('setLoc',{...c,radius:+$('rad').value});work=r.work;renderLoc();$('coord').value='';say('lm','تم حفظ موقع الشغل ✓','ok')}catch(e){say('lm',e.message,'bad')}};
+$('rad').onchange=async()=>{if(!work)return;try{await api('setLoc',{radius:+$('rad').value})}catch(e){say('lm',e.message,'bad')}};
+</script>
+</body>
+</html>
